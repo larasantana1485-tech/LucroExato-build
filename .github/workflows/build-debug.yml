@@ -1,0 +1,55 @@
+name: Build Debug APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Descompactar projeto
+        run: |
+          unzip -o LucroExato_0_1_2_R3_CORRECOES_COM_BUILD_GITHUB.zip -d extracted
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Compilar APK Debug
+        working-directory: extracted
+        run: |
+          set -e
+          PROJECT_DIR="$(find . -type f -name settings.gradle.kts -printf '%h\n' | head -1)"
+
+          if [ -z "$PROJECT_DIR" ]; then
+            PROJECT_DIR="$(find . -type f -name settings.gradle -printf '%h\n' | head -1)"
+          fi
+
+          cd "$PROJECT_DIR"
+
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+            ./gradlew :app:assembleDebug --stacktrace
+          else
+            gradle :app:assembleDebug --stacktrace
+          fi
+
+      - name: Preparar APK
+        run: |
+          APK="$(find extracted -type f -path '*/app/build/outputs/apk/debug/*.apk' | head -1)"
+          cp "$APK" LucroExato_0_1_2_R3_DEBUG.apk
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LucroExato_0_1_2_R3_DEBUG
+          path: LucroExato_0_1_2_R3_DEBUG.apk
