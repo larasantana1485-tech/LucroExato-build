@@ -3,34 +3,52 @@ name: Build Edi Vendas R17 Debug APK
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-    paths:
-      - 'EdiVendas_1_0_16_R17_FLUXO_ENVIO_SIMPLIFICADO_ANDROID_STUDIO.zip'
-      - '.github/workflows/build-edi-debug.yml'
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configurar Java 17
+      - name: Java 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Instalar Android SDK 36
-        shell: bash
+      - name: Android SDK 36
         run: |
-          set -e
-          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKMANAGER="$(find "$ANDROID_HOME" -type f -name sdkmanager | head -n 1)"
+          echo "sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;35.0.0"
 
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+      - name: Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
 
-          if [ ! -x "$SDKMANAGER" ]; then
-            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head
+      - name: Extrair projeto
+        run: |
+          mkdir extracted
+          unzip -q EdiVendas_1_0_16_R17_FLUXO_ENVIO_SIMPLIFICADO_ANDROID_STUDIO.zip -d extracted
+          PROJECT="$(find extracted -name settings.gradle.kts -printf '%h\n' | head -n 1)"
+          echo "PROJECT=$PROJECT" >> "$GITHUB_ENV"
+
+      - name: Compilar APK
+        run: |
+          cd "$PROJECT"
+          gradle :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Preparar APK
+        run: |
+          APK="$(find "$PROJECT/app/build/outputs/apk/debug" -name '*.apk' | head -n 1)"
+          cp "$APK" EdiVendas_R17_DEBUG.apk
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EdiVendas_R17_DEBUG
+          path: EdiVendas_R17_DEBUG.apk
