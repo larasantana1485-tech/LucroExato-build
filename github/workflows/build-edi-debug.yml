@@ -1,0 +1,75 @@
+name: Build Edi Vendas R17 Debug APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'EdiVendas_1_0_16_R17_FLUXO_ENVIO_SIMPLIFICADO_ANDROID_STUDIO.zip'
+      - '.github/workflows/build-edi-debug.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar SDK 36
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
+
+      - name: Configurar Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Descompactar Edi Vendas R17
+        run: |
+          rm -rf extracted
+          mkdir -p extracted
+          unzip -q "EdiVendas_1_0_16_R17_FLUXO_ENVIO_SIMPLIFICADO_ANDROID_STUDIO.zip" -d extracted
+          PROJECT_DIR="$(find extracted -type f -name settings.gradle.kts -printf '%h\n' | head -1)"
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "settings.gradle.kts não encontrado"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Compilar APK Debug
+        run: |
+          cd "$PROJECT_DIR"
+          gradle :app:assembleDebug --stacktrace --no-daemon
+
+      - name: Preparar APK
+        run: |
+          APK="$(find "$PROJECT_DIR/app/build/outputs/apk/debug" -type f -name '*.apk' | head -1)"
+          if [ -z "$APK" ]; then
+            echo "APK debug não encontrado"
+            exit 1
+          fi
+          cp "$APK" EdiVendas_1_0_16_R17_DEBUG.apk
+          sha256sum EdiVendas_1_0_16_R17_DEBUG.apk > EdiVendas_1_0_16_R17_DEBUG.sha256
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EdiVendas_1_0_16_R17_DEBUG
+          path: |
+            EdiVendas_1_0_16_R17_DEBUG.apk
+            EdiVendas_1_0_16_R17_DEBUG.sha256
+          if-no-files-found: error
+          retention-days: 7
