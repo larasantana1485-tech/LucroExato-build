@@ -19,54 +19,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configurar Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Instalar SDK 36
+      - name: Instalar Android SDK 36
+        shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
+          set -e
+          echo "ANDROID_HOME=$ANDROID_HOME"
 
-      - name: Configurar Gradle 8.13
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.13'
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
 
-      - name: Descompactar Edi Vendas R17
-        run: |
-          rm -rf extracted
-          mkdir -p extracted
-          unzip -q "EdiVendas_1_0_16_R17_FLUXO_ENVIO_SIMPLIFICADO_ANDROID_STUDIO.zip" -d extracted
-          PROJECT_DIR="$(find extracted -type f -name settings.gradle.kts -printf '%h\n' | head -1)"
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "settings.gradle.kts não encontrado"
-            exit 1
-          fi
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-      - name: Compilar APK Debug
-        run: |
-          cd "$PROJECT_DIR"
-          gradle :app:assembleDebug --stacktrace --no-daemon
-
-      - name: Preparar APK
-        run: |
-          APK="$(find "$PROJECT_DIR/app/build/outputs/apk/debug" -type f -name '*.apk' | head -1)"
-          if [ -z "$APK" ]; then
-            echo "APK debug não encontrado"
-            exit 1
-          fi
-          cp "$APK" EdiVendas_1_0_16_R17_DEBUG.apk
-          sha256sum EdiVendas_1_0_16_R17_DEBUG.apk > EdiVendas_1_0_16_R17_DEBUG.sha256
-
-      - name: Disponibilizar APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: EdiVendas_1_0_16_R17_DEBUG
-          path: |
-            EdiVendas_1_0_16_R17_DEBUG.apk
-            EdiVendas_1_0_16_R17_DEBUG.sha256
-          if-no-files-found: error
-          retention-days: 7
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head
