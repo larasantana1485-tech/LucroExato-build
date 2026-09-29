@@ -33,7 +33,7 @@ jobs:
       - name: Extrair projeto
         run: |
           mkdir extracted
-          unzip -q EdiVendas_1_0_16_R17_FLUXO_ENVIO_SIMPLIFICADO_ANDROID_STUDIO.zip -d extracted
+          unzip -q EdiVendas_1_0_26_R26_FINAL_AUDITORIA_ANDROID_STUDIO.zip -d extracted
           PROJECT="$(find extracted -name settings.gradle.kts -printf '%h\n' | head -n 1)"
           echo "PROJECT=$PROJECT" >> "$GITHUB_ENV"
 
