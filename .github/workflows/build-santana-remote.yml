@@ -25,7 +25,7 @@ jobs:
         run: |
           python3 -m pip install --break-system-packages brotli
           mkdir -p SantanaRemote
-          base64 -d SantanaRemote_source.tar.br.b64 > SantanaRemote_source.tar.br
+          cat SantanaRemote_source.part00 SantanaRemote_source.part01 SantanaRemote_source.part02 SantanaRemote_source.part03 | base64 -d > SantanaRemote_source.tar.br
           python3 -c 'import brotli; open("SantanaRemote_source.tar","wb").write(brotli.decompress(open("SantanaRemote_source.tar.br","rb").read()))'
           tar -xf SantanaRemote_source.tar -C SantanaRemote
       - name: Compilar APK debug
