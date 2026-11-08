@@ -32,6 +32,10 @@ jobs:
           cat SantanaRemote_source.part00 SantanaRemote_source.part01 SantanaRemote_source.part02 SantanaRemote_source.part03 | base64 -d > SantanaRemote_source.tar.br
           python3 -c 'import brotli; open("SantanaRemote_source.tar","wb").write(brotli.decompress(open("SantanaRemote_source.tar.br","rb").read()))'
           tar -xf SantanaRemote_source.tar -C SantanaRemote
+      - name: Corrigir conflito do setter autoKeyboard
+        run: |
+          sed -i 's/fun setAutoKeyboard(/fun updateAutoKeyboard(/g' SantanaRemote/app/src/main/java/br/com/santana/remote/TvController.kt
+          sed -i 's/tv::setAutoKeyboard/tv::updateAutoKeyboard/g' SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt
       - name: Compilar APK debug
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:assembleDebug
