@@ -45,6 +45,16 @@ jobs:
         run: |
           base64 -d SantanaRemote_single_screen_v021.b64 | gzip -d | python3 -
           grep -q 'versionName = "0.2.1-tela-unica"' SantanaRemote/app/build.gradle.kts
+      - name: Ajustar opt-in Material 3 para meia-aba
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt")
+          s = p.read_text()
+          old = '@Composable\nprivate fun RemoteApp()'
+          assert old in s, "Não foi possível localizar RemoteApp"
+          p.write_text(s.replace(old, '@OptIn(ExperimentalMaterial3Api::class)\n' + old, 1))
+          PY
       - name: Compilar APK debug
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:assembleDebug
