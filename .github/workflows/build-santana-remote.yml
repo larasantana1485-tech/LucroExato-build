@@ -1,8 +1,8 @@
-name: Compilar Santana Remote v0.2.1
+name: Compilar Santana Remote v0.2.2 — voz natural
 on:
   push:
     branches:
-      - build/santana-remote-v0.2.1-tela-unica
+      - build/santana-remote-v0.2.2-voz-natural
   workflow_dispatch:
 permissions:
   contents: read
@@ -55,13 +55,23 @@ jobs:
           assert old in s, "Não foi possível localizar RemoteApp"
           p.write_text(s.replace(old, '@OptIn(ExperimentalMaterial3Api::class)\n' + old, 1))
           PY
+      - name: Integrar voz natural e testes
+        run: |
+          cp VoiceCommandParser_v022.kt SantanaRemote/app/src/main/java/br/com/santana/remote/VoiceCommandParser.kt
+          mkdir -p SantanaRemote/app/src/test/java/br/com/santana/remote
+          cp VoiceCommandParserTest_v022.kt SantanaRemote/app/src/test/java/br/com/santana/remote/VoiceCommandParserTest.kt
+          python3 voice_v022.py
+          grep -q 'versionName = "0.2.2-voz-natural"' SantanaRemote/app/build.gradle.kts
+      - name: Testar frases de voz
+        working-directory: SantanaRemote
+        run: gradle --no-daemon :app:testDebugUnitTest
       - name: Compilar APK debug
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:assembleDebug
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: SantanaRemote-v0.2.1-tela-unica-debug-apk
+          name: SantanaRemote-v0.2.2-voz-natural-debug-apk
           path: SantanaRemote/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
