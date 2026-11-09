@@ -72,7 +72,11 @@ jobs:
           data = base64.b64decode(Path("SantanaRemote_v023_diff.b64").read_text())
           assert len(data) == 7088, f"Unexpected patch bytes: {len(data)}"
           assert hashlib.sha256(data).hexdigest() == "a62392f775118dfe7e822e4be9ac393b86799de3b2cadaa1b41d2b9ca6a89f5b"
-          Path("SantanaRemote_v023.patch").write_bytes(brotli.decompress(data))
+          patch_text = brotli.decompress(data).decode("utf-8")
+          old_prompt = "Ex.: canal cinco, volume cinco vezes, buscar receitas no YouTube"
+          branch_prompt = "Ex.: canal cinco, aumentar volume cinco vezes, buscar receitas no YouTube"
+          assert patch_text.count(old_prompt) == 1, "Unexpected diff context"
+          Path("SantanaRemote_v023.patch").write_text(patch_text.replace(old_prompt, branch_prompt), encoding="utf-8")
           PY
           patch --dry-run -p1 < SantanaRemote_v023.patch
           patch -p1 < SantanaRemote_v023.patch
