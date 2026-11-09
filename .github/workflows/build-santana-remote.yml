@@ -1,8 +1,8 @@
-name: Compilar Santana Remote v0.2.3 — controle original
+name: Compilar Santana Remote v0.2.4 — Ei Santana
 on:
   push:
     branches:
-      - build/santana-remote-v0.2.3-controle-original
+      - build/santana-remote-v0.2.4-ei-santana
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -81,6 +81,19 @@ jobs:
           patch --dry-run -p1 < SantanaRemote_v023.patch
           patch -p1 < SantanaRemote_v023.patch
           grep -q 'versionName = "0.2.3-controle-original"' SantanaRemote/app/build.gradle.kts
+      - name: Aplicar v0.2.4 — ativação Ei Santana
+        run: |
+          python3 - <<'PY'
+          import brotli, base64, hashlib
+          from pathlib import Path
+          data = base64.b64decode(Path("SantanaRemote_v024_code_patch.b64").read_text())
+          assert len(data) == 5671, f"Unexpected patch size: {len(data)}"
+          assert hashlib.sha256(data).hexdigest() == "e053fd8d6c6b27553a568dd68a9b80f323ffc74ec9933fb0910788428c5d919e"
+          Path("SantanaRemote_v024.patch").write_bytes(brotli.decompress(data))
+          PY
+          (cd SantanaRemote && patch --dry-run -p1 < ../SantanaRemote_v024.patch)
+          (cd SantanaRemote && patch -p1 < ../SantanaRemote_v024.patch)
+          grep -q 'versionName = "0.2.4-ei-santana"' SantanaRemote/app/build.gradle.kts
       - name: Testar frases de voz
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:testDebugUnitTest
@@ -90,7 +103,7 @@ jobs:
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: SantanaRemote-v0.2.3-controle-original-debug-apk
+          name: SantanaRemote-v0.2.4-Ei-Santana-debug-apk
           path: SantanaRemote/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
@@ -99,13 +112,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.3-Controle-Original.apk
-          if gh release view santana-remote-v0.2.3 >/dev/null 2>&1; then
-            gh release upload santana-remote-v0.2.3 SantanaRemote-0.2.3-Controle-Original.apk --clobber
+          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.4-Ei-Santana.apk
+          if gh release view santana-remote-v0.2.4 >/dev/null 2>&1; then
+            gh release upload santana-remote-v0.2.4 SantanaRemote-0.2.4-Ei-Santana.apk --clobber
           else
-            gh release create santana-remote-v0.2.3 SantanaRemote-0.2.3-Controle-Original.apk \
+            gh release create santana-remote-v0.2.4 SantanaRemote-0.2.4-Ei-Santana.apk \
               --target "$GITHUB_SHA" \
-              --title "Santana Remote 0.2.3 — Controle Original" \
-              --notes "APK Android de teste do Santana Remote 0.2.3 com teclado numérico, direcional e grupos de funções do controle LG em pop-ups. Voz via celular; comandos dependentes da versão webOS requerem teste." \
+              --title "Santana Remote 0.2.4 — Ei Santana" \
+              --notes "APK Android v0.2.4: botão Voz com toque longo para ativar/desativar Ei Santana enquanto o app estiver aberto. A busca no YouTube continua experimental e sujeita ao webOS." \
               --latest=false
           fi
