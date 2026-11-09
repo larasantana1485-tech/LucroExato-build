@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - build/santana-remote-v0.2.3-controle-original
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: write
@@ -89,6 +91,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Publicar download direto no GitHub Releases
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
