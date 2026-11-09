@@ -36,13 +36,15 @@ jobs:
         run: |
           sed -i 's/fun setAutoKeyboard(/fun updateAutoKeyboard(/g' SantanaRemote/app/src/main/java/br/com/santana/remote/TvController.kt
           sed -i 's/tv::setAutoKeyboard/tv::updateAutoKeyboard/g' SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt
+      - name: Corrigir teclado e busca direta no YouTube
+        run: python3 SantanaRemote_youtube_fix.py
       - name: Compilar APK debug
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:assembleDebug
       - name: Enviar APK gerado
         uses: actions/upload-artifact@v4
         with:
-          name: SantanaRemote-v0.1.0-debug-apk
+          name: SantanaRemote-v0.1.2-youtube-debug-apk
           path: SantanaRemote/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
