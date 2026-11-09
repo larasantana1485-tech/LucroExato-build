@@ -5,7 +5,7 @@ on:
       - build/santana-remote-v0.2.2-voz-natural
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   santana-remote:
     runs-on: ubuntu-latest
@@ -75,3 +75,17 @@ jobs:
           path: SantanaRemote/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Publicar download direto no GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.2-Voz-Natural.apk
+          if gh release view santana-remote-v0.2.2 >/dev/null 2>&1; then
+            gh release upload santana-remote-v0.2.2 SantanaRemote-0.2.2-Voz-Natural.apk --clobber
+          else
+            gh release create santana-remote-v0.2.2 SantanaRemote-0.2.2-Voz-Natural.apk \
+              --target "$GITHUB_SHA" \
+              --title "Santana Remote 0.2.2 — Voz Natural" \
+              --notes "APK Android de teste. Controle para LG webOS com touchpad na tela única, comandos de voz naturais e reconexão Wi-Fi. A sintonia por número, a pesquisa do YouTube e o Wake-on-LAN dependem de validação na TV." \
+              --latest=false
+          fi
