@@ -24,13 +24,23 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Descompactar fonte Santana Remote 0.2.0
+      - name: Restaurar projeto base e aplicar versoes anteriores
         run: |
           python3 -m pip install --break-system-packages brotli
           mkdir -p SantanaRemote
-          cat SantanaRemote_full_v020.part* | base64 -d > SantanaRemote_full_v020.tar.br
-          python3 -c 'import brotli; open("SantanaRemote_full_v020.tar","wb").write(brotli.decompress(open("SantanaRemote_full_v020.tar.br","rb").read()))'
-          tar -xf SantanaRemote_full_v020.tar -C SantanaRemote
+          cat SantanaRemote_source.part00 SantanaRemote_source.part01 SantanaRemote_source.part02 SantanaRemote_source.part03 | base64 -d > SantanaRemote_source.tar.br
+          python3 -c 'import brotli; open("SantanaRemote_source.tar","wb").write(brotli.decompress(open("SantanaRemote_source.tar.br","rb").read()))'
+          tar -xf SantanaRemote_source.tar -C SantanaRemote
+          sed -i 's/fun setAutoKeyboard(/fun updateAutoKeyboard(/g' SantanaRemote/app/src/main/java/br/com/santana/remote/TvController.kt
+          sed -i 's/tv::setAutoKeyboard/tv::updateAutoKeyboard/g' SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt
+          python3 SantanaRemote_youtube_fix.py
+      - name: Aplicar controle completo, voz e icone v0.2.0
+        run: |
+          cat SantanaRemote_full_v020.part* | base64 -d > SantanaRemote_patch_v020.tar.br
+          python3 -c 'import brotli; open("SantanaRemote_patch_v020.tar","wb").write(brotli.decompress(open("SantanaRemote_patch_v020.tar.br","rb").read()))'
+          tar -xf SantanaRemote_patch_v020.tar
+          python3 apply_v020.py
+          grep -q 'versionName = "0.2.0-completo-voz"' SantanaRemote/app/build.gradle.kts
       - name: Compilar APK debug
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:assembleDebug
