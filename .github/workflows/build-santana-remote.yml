@@ -1,8 +1,8 @@
-name: Compilar Santana Remote v0.2.2 — voz natural
+name: Compilar Santana Remote v0.2.3 — controle original
 on:
   push:
     branches:
-      - build/santana-remote-v0.2.2-voz-natural
+      - build/santana-remote-v0.2.3-controle-original
   workflow_dispatch:
 permissions:
   contents: write
@@ -62,6 +62,19 @@ jobs:
           cp VoiceCommandParserTest_v022.kt SantanaRemote/app/src/test/java/br/com/santana/remote/VoiceCommandParserTest.kt
           python3 voice_v022.py
           grep -q 'versionName = "0.2.2-voz-natural"' SantanaRemote/app/build.gradle.kts
+      - name: Aplicar atualização v0.2.3 (layout clássico e botões LG)
+        run: |
+          python3 - <<'PY'
+          import brotli, base64, hashlib
+          from pathlib import Path
+          data = base64.b64decode(Path("SantanaRemote_v023_diff.b64").read_text())
+          assert len(data) == 7088, f"Unexpected patch bytes: {len(data)}"
+          assert hashlib.sha256(data).hexdigest() == "a62392f775118dfe7e822e4be9ac393b86799de3b2cadaa1b41d2b9ca6a89f5b"
+          Path("SantanaRemote_v023.patch").write_bytes(brotli.decompress(data))
+          PY
+          patch --dry-run -p1 < SantanaRemote_v023.patch
+          patch -p1 < SantanaRemote_v023.patch
+          grep -q 'versionName = "0.2.3-controle-original"' SantanaRemote/app/build.gradle.kts
       - name: Testar frases de voz
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:testDebugUnitTest
@@ -71,7 +84,7 @@ jobs:
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: SantanaRemote-v0.2.2-voz-natural-debug-apk
+          name: SantanaRemote-v0.2.3-controle-original-debug-apk
           path: SantanaRemote/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
@@ -79,13 +92,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.2-Voz-Natural.apk
-          if gh release view santana-remote-v0.2.2 >/dev/null 2>&1; then
-            gh release upload santana-remote-v0.2.2 SantanaRemote-0.2.2-Voz-Natural.apk --clobber
+          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.3-Controle-Original.apk
+          if gh release view santana-remote-v0.2.3 >/dev/null 2>&1; then
+            gh release upload santana-remote-v0.2.3 SantanaRemote-0.2.3-Controle-Original.apk --clobber
           else
-            gh release create santana-remote-v0.2.2 SantanaRemote-0.2.2-Voz-Natural.apk \
+            gh release create santana-remote-v0.2.3 SantanaRemote-0.2.3-Controle-Original.apk \
               --target "$GITHUB_SHA" \
-              --title "Santana Remote 0.2.2 — Voz Natural" \
-              --notes "APK Android de teste. Controle para LG webOS com touchpad na tela única, comandos de voz naturais e reconexão Wi-Fi. A sintonia por número, a pesquisa do YouTube e o Wake-on-LAN dependem de validação na TV." \
+              --title "Santana Remote 0.2.3 — Controle Original" \
+              --notes "APK Android de teste do Santana Remote 0.2.3 com teclado numérico, direcional e grupos de funções do controle LG em pop-ups. Voz via celular; comandos dependentes da versão webOS requerem teste." \
               --latest=false
           fi
