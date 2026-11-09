@@ -1,8 +1,8 @@
-name: Compilar Santana Remote v0.2.0
+name: Compilar Santana Remote v0.2.1
 on:
   push:
     branches:
-      - build/santana-remote-v0.1.0
+      - build/santana-remote-v0.2.1-tela-unica
   workflow_dispatch:
 permissions:
   contents: read
@@ -41,13 +41,17 @@ jobs:
           tar -xf SantanaRemote_patch_v020.tar
           python3 apply_v020.py
           grep -q 'versionName = "0.2.0-completo-voz"' SantanaRemote/app/build.gradle.kts
+      - name: Restaurar tela única e touchpad v0.2.1
+        run: |
+          base64 -d SantanaRemote_single_screen_v021.b64 | gzip -d | python3 -
+          grep -q 'versionName = "0.2.1-tela-unica"' SantanaRemote/app/build.gradle.kts
       - name: Compilar APK debug
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:assembleDebug
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: SantanaRemote-v0.2.0-completo-voz-apk
+          name: SantanaRemote-v0.2.1-tela-unica-debug-apk
           path: SantanaRemote/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
