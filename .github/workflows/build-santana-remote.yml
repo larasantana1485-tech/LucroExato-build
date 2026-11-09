@@ -1,4 +1,4 @@
-name: Compilar Santana Remote APK
+name: Compilar Santana Remote v0.2.0
 on:
   push:
     branches:
@@ -15,36 +15,29 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Preparar SDK Android 35
+      - name: Preparar Android SDK 35
         run: |
           echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
           SDKMANAGER="${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager"
-          test -x "$SDKMANAGER" || { echo "SDK manager ausente"; exit 1; }
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Descompactar Santana Remote
+      - name: Descompactar fonte Santana Remote 0.2.0
         run: |
           python3 -m pip install --break-system-packages brotli
           mkdir -p SantanaRemote
-          cat SantanaRemote_source.part00 SantanaRemote_source.part01 SantanaRemote_source.part02 SantanaRemote_source.part03 | base64 -d > SantanaRemote_source.tar.br
-          python3 -c 'import brotli; open("SantanaRemote_source.tar","wb").write(brotli.decompress(open("SantanaRemote_source.tar.br","rb").read()))'
-          tar -xf SantanaRemote_source.tar -C SantanaRemote
-      - name: Corrigir conflito do setter autoKeyboard
-        run: |
-          sed -i 's/fun setAutoKeyboard(/fun updateAutoKeyboard(/g' SantanaRemote/app/src/main/java/br/com/santana/remote/TvController.kt
-          sed -i 's/tv::setAutoKeyboard/tv::updateAutoKeyboard/g' SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt
-      - name: Corrigir teclado e busca direta no YouTube
-        run: python3 SantanaRemote_youtube_fix.py
+          cat SantanaRemote_full_v020.part* | base64 -d > SantanaRemote_full_v020.tar.br
+          python3 -c 'import brotli; open("SantanaRemote_full_v020.tar","wb").write(brotli.decompress(open("SantanaRemote_full_v020.tar.br","rb").read()))'
+          tar -xf SantanaRemote_full_v020.tar -C SantanaRemote
       - name: Compilar APK debug
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:assembleDebug
-      - name: Enviar APK gerado
+      - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: SantanaRemote-v0.1.2-youtube-debug-apk
+          name: SantanaRemote-v0.2.0-completo-voz-apk
           path: SantanaRemote/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
