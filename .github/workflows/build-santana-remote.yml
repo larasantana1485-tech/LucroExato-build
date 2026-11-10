@@ -122,6 +122,17 @@ jobs:
           (cd SantanaRemote && patch --dry-run -p1 < ../SantanaRemote_v026.patch)
           (cd SantanaRemote && patch -p1 < ../SantanaRemote_v026.patch)
           grep -q 'versionName = "0.2.6-interface-voz"' SantanaRemote/app/build.gradle.kts
+      - name: Corrigir tipagem da cor opcional no Kotlin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt")
+          source = p.read_text()
+          old = 'if (item.second != null) {\n                                Box(Modifier.size(17.dp).background(item.second, CircleShape))'
+          new = 'val swatch = item.second\n                            if (swatch != null) {\n                                Box(Modifier.size(17.dp).background(swatch, CircleShape))'
+          assert source.count(old) == 1
+          p.write_text(source.replace(old, new))
+          PY
       - name: Testar frases de voz
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:testDebugUnitTest
