@@ -1,0 +1,193 @@
+name: Compilar Santana Remote v0.2.9 — touchpad ampliado
+on:
+  push:
+    branches:
+      - build/santana-remote-v0.2.9-touch-ampliado
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  santana-remote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Android SDK 35
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
+          SDKMANAGER="${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Restaurar projeto base e aplicar versoes anteriores
+        run: |
+          python3 -m pip install --break-system-packages brotli
+          mkdir -p SantanaRemote
+          cat SantanaRemote_source.part00 SantanaRemote_source.part01 SantanaRemote_source.part02 SantanaRemote_source.part03 | base64 -d > SantanaRemote_source.tar.br
+          python3 -c 'import brotli; open("SantanaRemote_source.tar","wb").write(brotli.decompress(open("SantanaRemote_source.tar.br","rb").read()))'
+          tar -xf SantanaRemote_source.tar -C SantanaRemote
+          sed -i 's/fun setAutoKeyboard(/fun updateAutoKeyboard(/g' SantanaRemote/app/src/main/java/br/com/santana/remote/TvController.kt
+          sed -i 's/tv::setAutoKeyboard/tv::updateAutoKeyboard/g' SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt
+          python3 SantanaRemote_youtube_fix.py
+      - name: Aplicar controle completo, voz e icone v0.2.0
+        run: |
+          cat SantanaRemote_full_v020.part* | base64 -d > SantanaRemote_patch_v020.tar.br
+          python3 -c 'import brotli; open("SantanaRemote_patch_v020.tar","wb").write(brotli.decompress(open("SantanaRemote_patch_v020.tar.br","rb").read()))'
+          tar -xf SantanaRemote_patch_v020.tar
+          python3 apply_v020.py
+          grep -q 'versionName = "0.2.0-completo-voz"' SantanaRemote/app/build.gradle.kts
+      - name: Restaurar tela única e touchpad v0.2.1
+        run: |
+          base64 -d SantanaRemote_single_screen_v021.b64 | gzip -d | python3 -
+          grep -q 'versionName = "0.2.1-tela-unica"' SantanaRemote/app/build.gradle.kts
+      - name: Ajustar opt-in Material 3 para meia-aba
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt")
+          s = p.read_text()
+          old = '@Composable\nprivate fun RemoteApp()'
+          assert old in s, "Não foi possível localizar RemoteApp"
+          p.write_text(s.replace(old, '@OptIn(ExperimentalMaterial3Api::class)\n' + old, 1))
+          PY
+      - name: Integrar voz natural e testes
+        run: |
+          cp VoiceCommandParser_v022.kt SantanaRemote/app/src/main/java/br/com/santana/remote/VoiceCommandParser.kt
+          mkdir -p SantanaRemote/app/src/test/java/br/com/santana/remote
+          cp VoiceCommandParserTest_v022.kt SantanaRemote/app/src/test/java/br/com/santana/remote/VoiceCommandParserTest.kt
+          python3 voice_v022.py
+          grep -q 'versionName = "0.2.2-voz-natural"' SantanaRemote/app/build.gradle.kts
+      - name: Aplicar atualização v0.2.3 (layout clássico e botões LG)
+        run: |
+          python3 - <<'PY'
+          import brotli, base64, hashlib
+          from pathlib import Path
+          data = base64.b64decode(Path("SantanaRemote_v023_diff.b64").read_text())
+          assert len(data) == 7088, f"Unexpected patch bytes: {len(data)}"
+          assert hashlib.sha256(data).hexdigest() == "a62392f775118dfe7e822e4be9ac393b86799de3b2cadaa1b41d2b9ca6a89f5b"
+          patch_text = brotli.decompress(data).decode("utf-8")
+          old_prompt = "Ex.: canal cinco, volume cinco vezes, buscar receitas no YouTube"
+          branch_prompt = "Ex.: canal cinco, aumentar volume cinco vezes, buscar receitas no YouTube"
+          assert patch_text.count(old_prompt) == 1, "Unexpected diff context"
+          Path("SantanaRemote_v023.patch").write_text(patch_text.replace(old_prompt, branch_prompt), encoding="utf-8")
+          PY
+          patch --dry-run -p1 < SantanaRemote_v023.patch
+          patch -p1 < SantanaRemote_v023.patch
+          grep -q 'versionName = "0.2.3-controle-original"' SantanaRemote/app/build.gradle.kts
+      - name: Aplicar v0.2.4 — ativação Ei Santana
+        run: |
+          python3 - <<'PY'
+          import brotli, base64, hashlib
+          from pathlib import Path
+          data = base64.b64decode(Path("SantanaRemote_v024_code_patch.b64").read_text())
+          assert len(data) == 5671, f"Unexpected patch size: {len(data)}"
+          assert hashlib.sha256(data).hexdigest() == "e053fd8d6c6b27553a568dd68a9b80f323ffc74ec9933fb0910788428c5d919e"
+          Path("SantanaRemote_v024.patch").write_bytes(brotli.decompress(data))
+          PY
+          (cd SantanaRemote && patch --dry-run -p1 < ../SantanaRemote_v024.patch)
+          (cd SantanaRemote && patch -p1 < ../SantanaRemote_v024.patch)
+          grep -q 'versionName = "0.2.4-ei-santana"' SantanaRemote/app/build.gradle.kts
+      - name: Aplicar filtro de conversa ambiente v0.2.5
+        run: |
+          python3 - <<'PY'
+          import base64, brotli, hashlib
+          from pathlib import Path
+          data = base64.b64decode(Path('SantanaRemote_v025_patch.b64').read_text())
+          assert len(data) == 3074
+          assert hashlib.sha256(data).hexdigest() == '321aa9f8d160fd2fd55e1e7e7aeb1fbaa0a6ae0338e33033383d9e1b2d34ffe7'
+          patch = brotli.decompress(data).decode('utf8')
+          patch = patch.split('--- a/README.md')[0]
+          Path('SantanaRemote_v025.patch').write_text(patch, encoding='utf8')
+          PY
+          (cd SantanaRemote && patch --dry-run -p1 < ../SantanaRemote_v025.patch)
+          (cd SantanaRemote && patch -p1 < ../SantanaRemote_v025.patch)
+          grep -q 'versionName = "0.2.5-ei-santana-voz-filtrada"' SantanaRemote/app/build.gradle.kts
+      - name: Aplicar interação e voz v0.2.6
+        run: |
+          python3 - <<'PY'
+          import brotli, base64, hashlib
+          from pathlib import Path
+          data = base64.b64decode(Path("SantanaRemote_v026_patch.b64").read_text())
+          assert len(data) == 4654, f"Invalid patch size: {len(data)}"
+          assert hashlib.sha256(data).hexdigest() == "e3d489965b56bea399677829bc057be067fde0e93d08a3abe920e24a25b852a5"
+          Path("SantanaRemote_v026.patch").write_bytes(brotli.decompress(data))
+          PY
+          (cd SantanaRemote && patch --dry-run -p1 < ../SantanaRemote_v026.patch)
+          (cd SantanaRemote && patch -p1 < ../SantanaRemote_v026.patch)
+          grep -q 'versionName = "0.2.6-interface-voz"' SantanaRemote/app/build.gradle.kts
+      - name: Corrigir tipagem da cor opcional no Kotlin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt")
+          source = p.read_text()
+          old = 'if (item.second != null) {\n                                Box(Modifier.size(17.dp).background(item.second, CircleShape))'
+          new = 'val swatch = item.second\n                            if (swatch != null) {\n                                Box(Modifier.size(17.dp).background(swatch, CircleShape))'
+          assert source.count(old) == 1
+          p.write_text(source.replace(old, new))
+          PY
+      - name: Instalar arquivos completos do Santana Remote 0.2.8
+        run: |
+          python3 - <<'PY'
+          import brotli, base64, hashlib
+          from pathlib import Path
+          data = base64.b64decode(Path("SantanaRemote_v028_overlay.b64").read_text())
+          assert len(data) == 27959, f"Tamanho inesperado: {len(data)}"
+          assert hashlib.sha256(data).hexdigest() == "1b47d1f6f96ea776cc3902605fb24579189350c139cb9a9e1db6fc581ba47a56"
+          Path("SantanaRemote_v028_overlay.tar").write_bytes(brotli.decompress(data))
+          PY
+          tar -xf SantanaRemote_v028_overlay.tar -C SantanaRemote
+          grep -q 'versionName = "0.2.8-volume-scroll"' SantanaRemote/app/build.gradle.kts
+          grep -q 'fun setVolume(level: Int)' SantanaRemote/app/src/main/java/br/com/santana/remote/TvController.kt
+      - name: Aplicar layout touchpad ampliado 0.2.9
+        run: |
+          python3 - <<'PY'
+          import base64, brotli, hashlib
+          from pathlib import Path
+          data = base64.b64decode(Path('SantanaRemote_v029_patch.b64').read_text())
+          assert len(data) == 4442, f'Unexpected patch length {len(data)}'
+          assert hashlib.sha256(data).hexdigest() == '69215ca4d76d2c18952c943132405af7478f21b5fc3f64599fa312679510e5bb'
+          Path('SantanaRemote_v029.patch').write_bytes(brotli.decompress(data))
+          PY
+          (cd SantanaRemote && patch --dry-run -p1 < ../SantanaRemote_v029.patch)
+          (cd SantanaRemote && patch -p1 < ../SantanaRemote_v029.patch)
+          grep -q 'versionName = "0.2.9-touch-ampliado"' SantanaRemote/app/build.gradle.kts
+          grep -q 'private fun VerticalScrollRail' SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt
+          grep -q 'private fun PlaybackPopup' SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt
+      - name: Testar frases de voz
+        working-directory: SantanaRemote
+        run: gradle --no-daemon :app:testDebugUnitTest
+      - name: Compilar APK debug
+        working-directory: SantanaRemote
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SantanaRemote-v0.2.9-Touch-Ampliado-debug-apk
+          path: SantanaRemote/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publicar download direto no GitHub Releases
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.9-Touch-Ampliado.apk
+          if gh release view santana-remote-v0.2.9 >/dev/null 2>&1; then
+            gh release upload santana-remote-v0.2.9 SantanaRemote-0.2.9-Touch-Ampliado.apk --clobber
+          else
+            gh release create santana-remote-v0.2.9 SantanaRemote-0.2.9-Touch-Ampliado.apk \
+              --target "$GITHUB_SHA" \
+              --title "Santana Remote 0.2.9 — Touch Ampliado" \
+              --notes "APK 0.2.9 com touchpad ampliado, barra lateral de scroll à direita, botão Controles com popup branco para reprodução e teclas coloridas; modo único de cursor e botão Voz. Scroll YouTube usa foco, sujeito ao firmware LG." \
+              --latest=false
+          fi
+
+# Publicacao do APK 0.2.8 por push na branch de compilacao.
