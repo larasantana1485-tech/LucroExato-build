@@ -1,8 +1,8 @@
-name: Compilar Santana Remote v0.2.8 — volume e navegação
+name: Compilar Santana Remote v0.2.9 — touchpad ampliado
 on:
   push:
     branches:
-      - build/santana-remote-v0.2.8-volume-navegacao
+      - build/santana-remote-v0.2.9-touch-ampliado
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -146,6 +146,21 @@ jobs:
           tar -xf SantanaRemote_v028_overlay.tar -C SantanaRemote
           grep -q 'versionName = "0.2.8-volume-scroll"' SantanaRemote/app/build.gradle.kts
           grep -q 'fun setVolume(level: Int)' SantanaRemote/app/src/main/java/br/com/santana/remote/TvController.kt
+      - name: Aplicar layout touchpad ampliado 0.2.9
+        run: |
+          python3 - <<'PY'
+          import base64, brotli, hashlib
+          from pathlib import Path
+          data = base64.b64decode(Path('SantanaRemote_v029_patch.b64').read_text())
+          assert len(data) == 4442, f'Unexpected patch length {len(data)}'
+          assert hashlib.sha256(data).hexdigest() == '69215ca4d76d2c18952c943132405af7478f21b5fc3f64599fa312679510e5bb'
+          Path('SantanaRemote_v029.patch').write_bytes(brotli.decompress(data))
+          PY
+          (cd SantanaRemote && patch --dry-run -p1 < ../SantanaRemote_v029.patch)
+          (cd SantanaRemote && patch -p1 < ../SantanaRemote_v029.patch)
+          grep -q 'versionName = "0.2.9-touch-ampliado"' SantanaRemote/app/build.gradle.kts
+          grep -q 'private fun VerticalScrollRail' SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt
+          grep -q 'private fun PlaybackPopup' SantanaRemote/app/src/main/java/br/com/santana/remote/MainActivity.kt
       - name: Testar frases de voz
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:testDebugUnitTest
@@ -155,7 +170,7 @@ jobs:
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: SantanaRemote-v0.2.8-Volume-Navegacao-debug-apk
+          name: SantanaRemote-v0.2.9-Touch-Ampliado-debug-apk
           path: SantanaRemote/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
@@ -164,14 +179,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.8-Volume-Navegacao.apk
-          if gh release view santana-remote-v0.2.8 >/dev/null 2>&1; then
-            gh release upload santana-remote-v0.2.8 SantanaRemote-0.2.8-Volume-Navegacao.apk --clobber
+          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.9-Touch-Ampliado.apk
+          if gh release view santana-remote-v0.2.9 >/dev/null 2>&1; then
+            gh release upload santana-remote-v0.2.9 SantanaRemote-0.2.9-Touch-Ampliado.apk --clobber
           else
-            gh release create santana-remote-v0.2.8 SantanaRemote-0.2.8-Volume-Navegacao.apk \
+            gh release create santana-remote-v0.2.9 SantanaRemote-0.2.9-Touch-Ampliado.apk \
               --target "$GITHUB_SHA" \
-              --title "Santana Remote 0.2.8 — Volume e Navegação" \
-              --notes "APK 0.2.8 para LG webOS: volume exato via SSAP, controle Cursor/Navegar com deslizes nos quatro sentidos e busca de YouTube no navegador da TV (experimental)." \
+              --title "Santana Remote 0.2.9 — Touch Ampliado" \
+              --notes "APK 0.2.9 com touchpad ampliado, barra lateral de scroll à direita, botão Controles com popup branco para reprodução e teclas coloridas; modo único de cursor e botão Voz. Scroll YouTube usa foco, sujeito ao firmware LG." \
               --latest=false
           fi
 
