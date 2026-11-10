@@ -174,3 +174,5 @@ jobs:
               --notes "APK 0.2.8 para LG webOS: volume exato via SSAP, controle Cursor/Navegar com deslizes nos quatro sentidos e busca de YouTube no navegador da TV (experimental)." \
               --latest=false
           fi
+
+# Publicacao do APK 0.2.8 por push na branch de compilacao.
