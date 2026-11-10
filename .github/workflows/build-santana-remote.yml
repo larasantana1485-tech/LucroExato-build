@@ -160,7 +160,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Publicar download direto no GitHub Releases
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
