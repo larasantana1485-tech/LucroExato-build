@@ -133,19 +133,19 @@ jobs:
           assert source.count(old) == 1
           p.write_text(source.replace(old, new))
           PY
-      - name: Aplicar v0.2.8 — volume por nivel, busca e gestos de navegação
+      - name: Instalar arquivos completos do Santana Remote 0.2.8
         run: |
           python3 - <<'PY'
           import brotli, base64, hashlib
           from pathlib import Path
-          data = base64.b64decode(Path("SantanaRemote_v028_patch.b64").read_text())
-          assert len(data) == 7892, f"Tamanho inesperado do patch: {len(data)}"
-          assert hashlib.sha256(data).hexdigest() == "0a4206311e242239369b8def02ad9e8ee8fbfe0168bb56d30bf1ae58f85f0cbf"
-          Path("SantanaRemote_v028.patch").write_bytes(brotli.decompress(data))
+          data = base64.b64decode(Path("SantanaRemote_v028_overlay.b64").read_text())
+          assert len(data) == 27959, f"Tamanho inesperado: {len(data)}"
+          assert hashlib.sha256(data).hexdigest() == "1b47d1f6f96ea776cc3902605fb24579189350c139cb9a9e1db6fc581ba47a56"
+          Path("SantanaRemote_v028_overlay.tar").write_bytes(brotli.decompress(data))
           PY
-          (cd SantanaRemote && patch --dry-run -p1 < ../SantanaRemote_v028.patch)
-          (cd SantanaRemote && patch -p1 < ../SantanaRemote_v028.patch)
+          tar -xf SantanaRemote_v028_overlay.tar -C SantanaRemote
           grep -q 'versionName = "0.2.8-volume-scroll"' SantanaRemote/app/build.gradle.kts
+          grep -q 'fun setVolume(level: Int)' SantanaRemote/app/src/main/java/br/com/santana/remote/TvController.kt
       - name: Testar frases de voz
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:testDebugUnitTest
