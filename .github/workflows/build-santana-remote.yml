@@ -1,8 +1,8 @@
-name: Compilar Santana Remote v0.2.6 — controle responsivo
+name: Compilar Santana Remote v0.2.8 — volume e navegação
 on:
   push:
     branches:
-      - build/santana-remote-v0.2.6-controle-responsivo
+      - build/santana-remote-v0.2.8-volume-navegacao
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -133,6 +133,19 @@ jobs:
           assert source.count(old) == 1
           p.write_text(source.replace(old, new))
           PY
+      - name: Aplicar v0.2.8 — volume por nivel, busca e gestos de navegação
+        run: |
+          python3 - <<'PY'
+          import brotli, base64, hashlib
+          from pathlib import Path
+          data = base64.b64decode(Path("SantanaRemote_v028_patch.b64").read_text())
+          assert len(data) == 7892, f"Tamanho inesperado do patch: {len(data)}"
+          assert hashlib.sha256(data).hexdigest() == "0a4206311e242239369b8def02ad9e8ee8fbfe0168bb56d30bf1ae58f85f0cbf"
+          Path("SantanaRemote_v028.patch").write_bytes(brotli.decompress(data))
+          PY
+          (cd SantanaRemote && patch --dry-run -p1 < ../SantanaRemote_v028.patch)
+          (cd SantanaRemote && patch -p1 < ../SantanaRemote_v028.patch)
+          grep -q 'versionName = "0.2.8-volume-scroll"' SantanaRemote/app/build.gradle.kts
       - name: Testar frases de voz
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:testDebugUnitTest
@@ -142,7 +155,7 @@ jobs:
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: SantanaRemote-v0.2.6-Controle-Responsivo-debug-apk
+          name: SantanaRemote-v0.2.8-Volume-Navegacao-debug-apk
           path: SantanaRemote/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
@@ -151,13 +164,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.6-Controle-Responsivo.apk
-          if gh release view santana-remote-v0.2.6 >/dev/null 2>&1; then
-            gh release upload santana-remote-v0.2.6 SantanaRemote-0.2.6-Controle-Responsivo.apk --clobber
+          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.8-Volume-Navegacao.apk
+          if gh release view santana-remote-v0.2.8 >/dev/null 2>&1; then
+            gh release upload santana-remote-v0.2.8 SantanaRemote-0.2.8-Volume-Navegacao.apk --clobber
           else
-            gh release create santana-remote-v0.2.6 SantanaRemote-0.2.6-Controle-Responsivo.apk \
+            gh release create santana-remote-v0.2.8 SantanaRemote-0.2.8-Volume-Navegacao.apk \
               --target "$GITHUB_SHA" \
-              --title "Santana Remote 0.2.6 — Controle Responsivo" \
-              --notes "APK de teste v0.2.6: botões com feedback de pressão e vibração; faixa de reprodução e cores LG; alertas não cobrem controles; melhorias na voz Ei Santana. Escuta contínua é experimental e depende do serviço de reconhecimento Android." \
+              --title "Santana Remote 0.2.8 — Volume e Navegação" \
+              --notes "APK 0.2.8 para LG webOS: volume exato via SSAP, controle Cursor/Navegar com deslizes nos quatro sentidos e busca de YouTube no navegador da TV (experimental)." \
               --latest=false
           fi
