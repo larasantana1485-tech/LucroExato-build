@@ -1,8 +1,8 @@
-name: Compilar Santana Remote v0.2.5 — filtro de voz
+name: Compilar Santana Remote v0.2.6 — controle responsivo
 on:
   push:
     branches:
-      - build/santana-remote-v0.2.5-voz-filtrada
+      - build/santana-remote-v0.2.6-controle-responsivo
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -109,6 +109,19 @@ jobs:
           (cd SantanaRemote && patch --dry-run -p1 < ../SantanaRemote_v025.patch)
           (cd SantanaRemote && patch -p1 < ../SantanaRemote_v025.patch)
           grep -q 'versionName = "0.2.5-ei-santana-voz-filtrada"' SantanaRemote/app/build.gradle.kts
+      - name: Aplicar interação e voz v0.2.6
+        run: |
+          python3 - <<'PY'
+          import brotli, base64, hashlib
+          from pathlib import Path
+          data = base64.b64decode(Path("SantanaRemote_v026_patch.b64").read_text())
+          assert len(data) == 4654, f"Invalid patch size: {len(data)}"
+          assert hashlib.sha256(data).hexdigest() == "e3d489965b56bea399677829bc057be067fde0e93d08a3abe920e24a25b852a5"
+          Path("SantanaRemote_v026.patch").write_bytes(brotli.decompress(data))
+          PY
+          (cd SantanaRemote && patch --dry-run -p1 < ../SantanaRemote_v026.patch)
+          (cd SantanaRemote && patch -p1 < ../SantanaRemote_v026.patch)
+          grep -q 'versionName = "0.2.6-interface-voz"' SantanaRemote/app/build.gradle.kts
       - name: Testar frases de voz
         working-directory: SantanaRemote
         run: gradle --no-daemon :app:testDebugUnitTest
@@ -118,7 +131,7 @@ jobs:
       - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: SantanaRemote-v0.2.5-Voz-Filtrada-debug-apk
+          name: SantanaRemote-v0.2.6-Controle-Responsivo-debug-apk
           path: SantanaRemote/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
@@ -127,13 +140,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.5-Voz-Filtrada.apk
-          if gh release view santana-remote-v0.2.5 >/dev/null 2>&1; then
-            gh release upload santana-remote-v0.2.5 SantanaRemote-0.2.5-Voz-Filtrada.apk --clobber
+          cp SantanaRemote/app/build/outputs/apk/debug/app-debug.apk SantanaRemote-0.2.6-Controle-Responsivo.apk
+          if gh release view santana-remote-v0.2.6 >/dev/null 2>&1; then
+            gh release upload santana-remote-v0.2.6 SantanaRemote-0.2.6-Controle-Responsivo.apk --clobber
           else
-            gh release create santana-remote-v0.2.5 SantanaRemote-0.2.5-Voz-Filtrada.apk \
+            gh release create santana-remote-v0.2.6 SantanaRemote-0.2.6-Controle-Responsivo.apk \
               --target "$GITHUB_SHA" \
-              --title "Santana Remote 0.2.5 — Voz Filtrada" \
-              --notes "APK Android v0.2.5: filtra comandos após Ei Santana para ignorar conversa ambiente. Pesquisa YouTube continua experimental." \
+              --title "Santana Remote 0.2.6 — Controle Responsivo" \
+              --notes "APK de teste v0.2.6: botões com feedback de pressão e vibração; faixa de reprodução e cores LG; alertas não cobrem controles; melhorias na voz Ei Santana. Escuta contínua é experimental e depende do serviço de reconhecimento Android." \
               --latest=false
           fi
